@@ -69,7 +69,7 @@ def procesar_conversion_word(archivo_upload):
             return None
 
 # ==========================================
-# LÓGICA 3: CONVERTIR A EXCEL
+# LÓGICA 3: CONVERTIR A EXCEL (MEJORADA)
 # ==========================================
 def procesar_conversion_excel(archivo_upload):
     excel_buffer = io.BytesIO()
@@ -85,31 +85,51 @@ def procesar_conversion_excel(archivo_upload):
         try:
             tablas_encontradas = False
             
-            # Usamos pdfplumber para extraer tablas
+            # --- Configuración de Estrategias ---
+            # 1. Estrategia estricta (busca líneas/bordes)
+            config_bordes = {
+                "vertical_strategy": "lines", 
+                "horizontal_strategy": "lines",
+                "snap_tolerance": 3,
+            }
+            # 2. Estrategia relajada (busca espacios en blanco/texto)
+            config_texto = {
+                "vertical_strategy": "text", 
+                "horizontal_strategy": "text",
+                "snap_tolerance": 3,
+            }
+
             with pdfplumber.open(ruta_pdf_temp) as pdf:
-                # Preparamos el escritor de Excel
                 with pd.ExcelWriter(ruta_excel_temp, engine='openpyxl') as writer:
                     
                     for i, page in enumerate(pdf.pages):
-                        tables = page.extract_tables()
+                        # INTENTO 1: Buscar bordes físicos
+                        tables = page.extract_tables(config_bordes)
+                        
+                        # INTENTO 2: Si falla, buscar alineación de texto
+                        if not tables:
+                            tables = page.extract_tables(config_texto)
                         
                         for j, table in enumerate(tables):
-                            # Convertimos la lista de datos a DataFrame de Pandas
-                            # Asumimos que la primera fila son los encabezados si hay datos
-                            if len(table) > 1:
-                                df = pd.DataFrame(table[1:], columns=table[0])
-                            else:
-                                df = pd.DataFrame(table)
+                            # Limpiamos filas vacías o basura
+                            clean_table = [row for row in table if any(cell is not None and cell != '' for cell in row)]
                             
-                            # Nombre de la hoja: Pág 1 - Tabla 1
-                            sheet_name = f"Pag{i+1}_Tabla{j+1}"
-                            df.to_excel(writer, sheet_name=sheet_name, index=False)
-                            tablas_encontradas = True
+                            if clean_table:
+                                if len(clean_table) > 1:
+                                    df = pd.DataFrame(clean_table[1:], columns=clean_table[0])
+                                else:
+                                    df = pd.DataFrame(clean_table)
+                                
+                                # Nombre de hoja (limitado a 31 caracteres para evitar error de Excel)
+                                sheet_name = f"Pag{i+1}_Tabla{j+1}"[:31]
+                                
+                                df.to_excel(writer, sheet_name=sheet_name, index=False)
+                                tablas_encontradas = True
             
             if not tablas_encontradas:
                 return "NO_TABLES"
 
-            # Leemos el Excel generado para devolverlo
+            # Leemos el Excel generado
             with open(ruta_excel_temp, "rb") as f:
                 excel_buffer.write(f.read())
                 
@@ -157,7 +177,7 @@ with tab2:
 # === PESTAÑA 3: EXCEL ===
 with tab3:
     st.header("De PDF a Excel")
-    st.warning("Importante: El PDF debe tener tablas con bordes visibles para obtener mejores resultados.")
+    st.info("ℹ Mejorada para detectar tablas con mayor precisión.")
     
     file_excel = st.file_uploader("Sube tu PDF", type="pdf", key="u_excel")
     
@@ -167,7 +187,7 @@ with tab3:
                 excel_result = procesar_conversion_excel(file_excel)
             
             if excel_result == "NO_TABLES":
-                st.error("No pudimos detectar ninguna tabla clara en este PDF. Intenta con un archivo donde las líneas de las tablas sean visibles.")
+                st.error("No detectamos tablas claras. Intenta con un archivo que tenga filas/columnas más definidas.")
             elif excel_result:
                 st.success("¡Tablas extraídas!")
                 st.download_button(
