@@ -72,10 +72,10 @@ def procesar_conversion_word(archivo_upload):
 # INTERFAZ GRÁFICA (FRONTEND)
 # ==========================================
 
-st.title("🛠️ PDF Toolset Pro")
-st.markdown("Tu navaja suiza para gestión documental. **Seguro, rápido y sin límites.**")
+st.title("🛠️ PDF Toolset")
+st.markdown("Tu navaja para la gestión documental. **Seguro, rápido y sin límites.**")
 
-tab1, tab2, tab3 = st.tabs(["✂️ Separar PDF", "📝 A Word", "📊 A Excel"])
+tab1, tab2, tab3 = st.tabs(["✂️ Separar PDF", "📝 A Word"])
 
 # === PESTAÑA 1: SEPARADOR ===
 with tab1:
