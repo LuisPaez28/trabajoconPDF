@@ -69,7 +69,7 @@ def procesar_conversion_word(archivo_upload):
             return None
 
 # ==========================================
-# LÓGICA 3: CONVERTIR A EXCEL (MEJORADA)
+# LÓGICA 3: CONVERTIR A EXCEL (UNIFICADO)
 # ==========================================
 def procesar_conversion_excel(archivo_upload):
     excel_buffer = io.BytesIO()
@@ -78,40 +78,30 @@ def procesar_conversion_excel(archivo_upload):
         ruta_pdf_temp = os.path.join(temp_dir, "input_excel.pdf")
         ruta_excel_temp = os.path.join(temp_dir, "output.xlsx")
         
-        # Guardamos el PDF temporalmente
         with open(ruta_pdf_temp, "wb") as f:
             f.write(archivo_upload.getbuffer())
             
         try:
             tablas_encontradas = False
             
-            # --- Configuración de Estrategias ---
-            # 1. Estrategia estricta (busca líneas/bordes)
-            config_bordes = {
-                "vertical_strategy": "lines", 
-                "horizontal_strategy": "lines",
-                "snap_tolerance": 3,
-            }
-            # 2. Estrategia relajada (busca espacios en blanco/texto)
-            config_texto = {
-                "vertical_strategy": "text", 
-                "horizontal_strategy": "text",
-                "snap_tolerance": 3,
-            }
+            # Configuraciones de estrategias
+            config_bordes = {"vertical_strategy": "lines", "horizontal_strategy": "lines", "snap_tolerance": 3}
+            config_texto = {"vertical_strategy": "text", "horizontal_strategy": "text", "snap_tolerance": 3}
 
             with pdfplumber.open(ruta_pdf_temp) as pdf:
                 with pd.ExcelWriter(ruta_excel_temp, engine='openpyxl') as writer:
                     
+                    row_counter = 0 # Contador para saber en qué fila escribir
+                    hoja_unica = "Datos_Consolidados"
+                    
                     for i, page in enumerate(pdf.pages):
-                        # INTENTO 1: Buscar bordes físicos
+                        # Intentamos extraer tablas
                         tables = page.extract_tables(config_bordes)
-                        
-                        # INTENTO 2: Si falla, buscar alineación de texto
                         if not tables:
                             tables = page.extract_tables(config_texto)
                         
-                        for j, table in enumerate(tables):
-                            # Limpiamos filas vacías o basura
+                        for table in tables:
+                            # Limpieza de filas vacías
                             clean_table = [row for row in table if any(cell is not None and cell != '' for cell in row)]
                             
                             if clean_table:
@@ -120,16 +110,16 @@ def procesar_conversion_excel(archivo_upload):
                                 else:
                                     df = pd.DataFrame(clean_table)
                                 
-                                # Nombre de hoja (limitado a 31 caracteres para evitar error de Excel)
-                                sheet_name = f"Pag{i+1}_Tabla{j+1}"[:31]
+                                # Escribimos en la misma hoja, pero desplazando la fila (startrow)
+                                df.to_excel(writer, sheet_name=hoja_unica, startrow=row_counter, index=False)
                                 
-                                df.to_excel(writer, sheet_name=sheet_name, index=False)
+                                # Aumentamos el contador: filas de datos + 1 fila de encabezado + 2 filas de espacio libre
+                                row_counter += len(df) + 3 
                                 tablas_encontradas = True
             
             if not tablas_encontradas:
                 return "NO_TABLES"
 
-            # Leemos el Excel generado
             with open(ruta_excel_temp, "rb") as f:
                 excel_buffer.write(f.read())
                 
@@ -147,7 +137,6 @@ def procesar_conversion_excel(archivo_upload):
 st.title("🛠️ PDF Toolset Pro")
 st.markdown("Tu navaja suiza para gestión documental. **Seguro, rápido y sin límites.**")
 
-# Definimos las 3 pestañas
 tab1, tab2, tab3 = st.tabs(["✂️ Separar PDF", "📝 A Word", "📊 A Excel"])
 
 # === PESTAÑA 1: SEPARADOR ===
@@ -159,7 +148,7 @@ with tab1:
             zip_result, count = procesar_separacion(file_split)
         if zip_result:
             st.success(f"¡Hecho! {count} páginas extraídas.")
-            st.download_button("⬇️ Descargar ZIP", zip_result, "paginas.zip", "application/zip")
+            st.download_button("⬇ Descargar ZIP", zip_result, "paginas.zip", "application/zip")
 
 # === PESTAÑA 2: WORD ===
 with tab2:
@@ -171,29 +160,29 @@ with tab2:
             word_result = procesar_conversion_word(file_word)
         if word_result:
             st.success("¡Conversión lista!")
-            st.download_button("⬇️ Descargar Word", word_result, "documento.docx", 
+            st.download_button("⬇ Descargar Word", word_result, "documento.docx", 
                                "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 
 # === PESTAÑA 3: EXCEL ===
 with tab3:
     st.header("De PDF a Excel")
-    st.info("ℹ Mejorada para detectar tablas con mayor precisión.")
+    st.info("ℹ Todas las tablas detectadas se pondrán en **una sola hoja**, una debajo de la otra.")
     
     file_excel = st.file_uploader("Sube tu PDF", type="pdf", key="u_excel")
     
     if file_excel:
         if st.button("Extraer Tablas a Excel", type="primary"):
-            with st.spinner("Escaneando tablas y generando celdas..."):
+            with st.spinner("Unificando tablas en Excel..."):
                 excel_result = procesar_conversion_excel(file_excel)
             
             if excel_result == "NO_TABLES":
-                st.error("No detectamos tablas claras. Intenta con un archivo que tenga filas/columnas más definidas.")
+                st.error("No detectamos tablas claras.")
             elif excel_result:
-                st.success("¡Tablas extraídas!")
+                st.success("¡Tablas extraídas y unificadas!")
                 st.download_button(
-                    "⬇Descargar Excel", 
+                    "⬇️ Descargar Excel", 
                     excel_result, 
-                    "tablas_extraidas.xlsx", 
+                    "tablas_unificadas.xlsx", 
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
 
