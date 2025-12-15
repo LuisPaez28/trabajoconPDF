@@ -9,7 +9,7 @@ import os
 import tempfile
 
 # Configuración de la página
-st.set_page_config(page_title="PDF Toolset", page_icon="🤠", layout="centered")
+st.set_page_config(page_title="PDF Toolset", page_icon="🤠📄", layout="centered")
 
 # ==========================================
 # LÓGICA 1: SEPARAR PDF
