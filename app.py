@@ -9,7 +9,7 @@ import os
 import tempfile
 
 # Configuración de la página
-st.set_page_config(page_title="PDF Toolset Pro", page_icon="🛠️", layout="centered")
+st.set_page_config(page_title="PDF Toolset", page_icon="🤠", layout="centered")
 
 # ==========================================
 # LÓGICA 1: SEPARAR PDF
@@ -69,68 +69,6 @@ def procesar_conversion_word(archivo_upload):
             return None
 
 # ==========================================
-# LÓGICA 3: CONVERTIR A EXCEL (UNIFICADO)
-# ==========================================
-def procesar_conversion_excel(archivo_upload):
-    excel_buffer = io.BytesIO()
-    
-    with tempfile.TemporaryDirectory() as temp_dir:
-        ruta_pdf_temp = os.path.join(temp_dir, "input_excel.pdf")
-        ruta_excel_temp = os.path.join(temp_dir, "output.xlsx")
-        
-        with open(ruta_pdf_temp, "wb") as f:
-            f.write(archivo_upload.getbuffer())
-            
-        try:
-            tablas_encontradas = False
-            
-            # Configuraciones de estrategias
-            config_bordes = {"vertical_strategy": "lines", "horizontal_strategy": "lines", "snap_tolerance": 3}
-            config_texto = {"vertical_strategy": "text", "horizontal_strategy": "text", "snap_tolerance": 3}
-
-            with pdfplumber.open(ruta_pdf_temp) as pdf:
-                with pd.ExcelWriter(ruta_excel_temp, engine='openpyxl') as writer:
-                    
-                    row_counter = 0 # Contador para saber en qué fila escribir
-                    hoja_unica = "Datos_Consolidados"
-                    
-                    for i, page in enumerate(pdf.pages):
-                        # Intentamos extraer tablas
-                        tables = page.extract_tables(config_bordes)
-                        if not tables:
-                            tables = page.extract_tables(config_texto)
-                        
-                        for table in tables:
-                            # Limpieza de filas vacías
-                            clean_table = [row for row in table if any(cell is not None and cell != '' for cell in row)]
-                            
-                            if clean_table:
-                                if len(clean_table) > 1:
-                                    df = pd.DataFrame(clean_table[1:], columns=clean_table[0])
-                                else:
-                                    df = pd.DataFrame(clean_table)
-                                
-                                # Escribimos en la misma hoja, pero desplazando la fila (startrow)
-                                df.to_excel(writer, sheet_name=hoja_unica, startrow=row_counter, index=False)
-                                
-                                # Aumentamos el contador: filas de datos + 1 fila de encabezado + 2 filas de espacio libre
-                                row_counter += len(df) + 3 
-                                tablas_encontradas = True
-            
-            if not tablas_encontradas:
-                return "NO_TABLES"
-
-            with open(ruta_excel_temp, "rb") as f:
-                excel_buffer.write(f.read())
-                
-            excel_buffer.seek(0)
-            return excel_buffer
-
-        except Exception as e:
-            st.error(f"Error en conversión Excel: {e}")
-            return None
-
-# ==========================================
 # INTERFAZ GRÁFICA (FRONTEND)
 # ==========================================
 
@@ -162,29 +100,6 @@ with tab2:
             st.success("¡Conversión lista!")
             st.download_button("⬇ Descargar Word", word_result, "documento.docx", 
                                "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-
-# === PESTAÑA 3: EXCEL ===
-with tab3:
-    st.header("De PDF a Excel")
-    st.info("ℹ Todas las tablas detectadas se pondrán en **una sola hoja**, una debajo de la otra.")
-    
-    file_excel = st.file_uploader("Sube tu PDF", type="pdf", key="u_excel")
-    
-    if file_excel:
-        if st.button("Extraer Tablas a Excel", type="primary"):
-            with st.spinner("Unificando tablas en Excel..."):
-                excel_result = procesar_conversion_excel(file_excel)
-            
-            if excel_result == "NO_TABLES":
-                st.error("No detectamos tablas claras.")
-            elif excel_result:
-                st.success("¡Tablas extraídas y unificadas!")
-                st.download_button(
-                    "⬇️ Descargar Excel", 
-                    excel_result, 
-                    "tablas_unificadas.xlsx", 
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
 
 st.markdown("---")
 st.caption("Sistema de procesamiento seguro")
