@@ -75,7 +75,7 @@ def procesar_conversion_word(archivo_upload):
 st.title("🛠️ PDF Toolset")
 st.markdown("Tu navaja para la gestión documental. **Seguro, rápido y sin límites.**")
 
-tab1, tab2, tab3 = st.tabs(["✂️ Separar PDF", "📝 A Word"])
+tab1, tab2 = st.tabs(["✂️ Separar PDF", "📝 A Word"])
 
 # === PESTAÑA 1: SEPARADOR ===
 with tab1:
