@@ -9,7 +9,7 @@ import tempfile
 # Configuración de la página (Título y Layout)
 st.set_page_config(
     page_title="Dividir, unir o convertir PDF a Word",
-    page_icon="",
+    page_icon="🛠️",
     layout="centered"
 )
 
@@ -120,7 +120,7 @@ def procesar_word(archivo_upload):
 # INTERFAZ GRÁFICA (Streamlit Frontend)
 # ==========================================
 
-st.title("🛠️ PDF Super Tool Web")
+st.title("Dividir, unir o convertir PDF a Word")
 st.markdown("""
 Herramienta todo en uno para gestionar tus PDFs.
 *Procesamiento seguro en memoria (RAM).*
