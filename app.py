@@ -54,7 +54,7 @@ def procesar_separacion(archivo_upload):
         return None, 0
 
 # ==========================================
-# LÓGICA 2: UNIR PDF (Merge)
+# LÓGICA 2: UNIR PDF (Merge - ACTUALIZADA)
 # ==========================================
 def procesar_union(lista_archivos):
     """Recibe una lista de archivos y devuelve un solo PDF en memoria."""
@@ -66,6 +66,8 @@ def procesar_union(lista_archivos):
         total = len(lista_archivos)
 
         for i, archivo in enumerate(lista_archivos):
+            # IMPORTANTE: Aseguramos que el puntero de lectura esté al inicio
+            archivo.seek(0)
             writer.append(archivo)
             barra.progress((i + 1) / total, text=f"Uniendo archivo {i+1} de {total}")
         
@@ -145,28 +147,52 @@ with tab_split:
                     mime="application/zip"
                 )
 
-# --- PESTAÑA 2: UNIR ---
+# --- PESTAÑA 2: UNIR (CON REORDENAMIENTO) ---
 with tab_merge:
     st.header("Unir múltiples PDFs")
-    files_merge = st.file_uploader("Sube los PDFs (selecciona varios)", type="pdf", accept_multiple_files=True, key="merge")
+    
+    # 1. Subida de archivos
+    files_merge = st.file_uploader(
+        "1. Sube los PDFs (selecciona varios)", 
+        type="pdf", 
+        accept_multiple_files=True, 
+        key="merge"
+    )
     
     if files_merge:
-        st.info(f"Has seleccionado {len(files_merge)} archivos para unir.")
+        # 2. Mapa de archivos para poder reordenarlos
+        # Creamos un diccionario {NombreDelArchivo: ObjetoArchivo}
+        file_map = {f.name: f for f in files_merge}
         
-        # Permitir reordenar no es nativo fácil en Streamlit, 
-        # asumimos que el usuario los sube o nombra en orden.
+        st.markdown("---")
+        st.subheader("2. Ordenar archivos")
+        st.info("👇 Arrastra o selecciona en el orden que quieres que aparezcan en el PDF final.")
         
-        if st.button("Unir PDFs", type="primary"):
-            pdf_merged = procesar_union(files_merge)
-            
-            if pdf_merged:
-                st.success("¡Archivos unidos correctamente!")
-                st.download_button(
-                    label="⬇️ Descargar PDF Unido",
-                    data=pdf_merged,
-                    file_name="documento_unido.pdf",
-                    mime="application/pdf"
-                )
+        # Selector múltiple para definir el orden
+        archivos_seleccionados_nombres = st.multiselect(
+            "Secuencia de unión:",
+            options=file_map.keys(),
+            default=file_map.keys() # Por defecto aparecen todos en el orden de subida
+        )
+        
+        # 3. Botón de Acción
+        if st.button("Unir PDFs en este orden", type="primary"):
+            if not archivos_seleccionados_nombres:
+                st.warning("La lista para unir está vacía.")
+            else:
+                # Reconstruimos la lista de archivos basada en el orden visual
+                lista_final_ordenada = [file_map[name] for name in archivos_seleccionados_nombres]
+                
+                pdf_merged = procesar_union(lista_final_ordenada)
+                
+                if pdf_merged:
+                    st.success("¡Archivos unidos correctamente!")
+                    st.download_button(
+                        label="⬇️ Descargar PDF Unido",
+                        data=pdf_merged,
+                        file_name="documento_unido.pdf",
+                        mime="application/pdf"
+                    )
 
 # --- PESTAÑA 3: WORD ---
 with tab_word:
@@ -191,4 +217,4 @@ with tab_word:
                 )
 
 st.markdown("---")
-st.caption("Desarrollado con Python y Streamlit")
+st.caption("Desarrollado por Luis Páez")
