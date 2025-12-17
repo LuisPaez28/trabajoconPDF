@@ -8,8 +8,8 @@ import tempfile
 
 # Configuración de la página (Título y Layout)
 st.set_page_config(
-    page_title="PDF Super Tool Web",
-    page_icon="🛠️",
+    page_title="Dividir, unir o convertir PDF a Word",
+    page_icon="",
     layout="centered"
 )
 
@@ -127,7 +127,7 @@ Herramienta todo en uno para gestionar tus PDFs.
 """)
 
 # Pestañas
-tab_split, tab_merge, tab_word = st.tabs(["✂️ Separar", "🔗 Unir", "📝 a Word"])
+tab_split, tab_merge, tab_word = st.tabs(["✂️ Separar", "🔗 Unir", "📝 PDF a Word"])
 
 # --- PESTAÑA 1: SEPARAR ---
 with tab_split:
